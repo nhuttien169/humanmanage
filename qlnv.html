@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="qlnv.css">
+    <title>Quản Lý Nhân Viên</title>
+    <style>
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>👤 外国人管理</h1>
+        
+        <div class="controls">
+            <button class="btn btn-primary" onclick="loadData()">🔄 更新</button>
+            <button class="btn btn-success" onclick="refreshData()">🔃 Làm Mới</button>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div class="table-container">
+            <table id="employeeTable">
+                <thead>
+                    <tr>
+                        <th>🆔 社員番号</th>
+                        <th>👤 名前</th>
+                        <th>⚧ 性</th>
+                        <th>住所</th>
+                        <th>🎂 誕生日</th>
+                        <th>🎂 入社</th>
+                        <th>🎂 退職</th>
+
+                    </tr>
+                </thead>
+                <tbody id="employeeTableBody">
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <div>
+                                📋<br>
+                                <strong>Chưa có dữ liệu</strong><br>
+                                Nhấn "Tải Dữ Liệu" để lấy thông tin từ Google Sheets
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ THAY ĐỔI API KEY VÀ SHEET ID TẠI ĐÂY
+        const API_KEY = 'YOUR_NEW_API_KEY_HERE'; // Thay bằng API key mới của bạn
+        const SHEET_ID = '1NxHPl12h8EEYydRH_BgUQm7krGxzc1UX84n8A6R1di4';
+        const RANGE = 'Sheet1!A:AA'; // Có thể thay đổi range theo sheet của bạn
+        
+        let employeeData = [];
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+            
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        async function loadData() {
+            if (API_KEY === 'AIzaSyDxaT4hU_6cIlfhbP2U4EZ1nEJiz7CLBrc') {
+                showStatus('⚠️ Vui lòng cấu hình API key trong mã nguồn trước khi sử dụng!', 'error');
+                return;
+            }
+            
+            showStatus('🔄 Đang tải dữ liệu từ Google Sheets...', 'loading');
+            
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/1NxHPl12h8EEYydRH_BgUQm7krGxzc1UX84n8A6R1di4/values/Employees!A:AA?key=AIzaSyDxaT4hU_6cIlfhbP2U4EZ1nEJiz7CLBrc`;
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.values || data.values.length === 0) {
+                    showStatus('📭 Không tìm thấy dữ liệu trong Google Sheets', 'error');
+                    return;
+                }
+                
+                employeeData = data.values;
+                displayData();
+                showStatus(`✅ Đã tải thành công ${employeeData.length - 1} nhân viên`, 'success');
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showStatus(`❌ Lỗi khi tải dữ liệu: ${error.message}`, 'error');
+            }
+        }
+        
+        function displayData() {
+            const tableBody = document.getElementById('employeeTableBody');
+            
+            if (employeeData.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <div>
+                                📋<br>
+                                <strong>Chưa có dữ liệu</strong><br>
+                                Nhấn "Tải Dữ Liệu" để lấy thông tin từ Google Sheets
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Skip header row (first row)
+            const dataRows = employeeData.slice(1);
+            
+            if (dataRows.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <div>
+                                📋<br>
+                                <strong>Chỉ có tiêu đề, không có dữ liệu nhân viên</strong>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            const rows = dataRows.map(row => {
+                // Đảm bảo có đủ 4 cột, thêm chuỗi rỗng nếu thiếu
+                const [id, name, gender, address, birhtday, startwork, endwork] = [
+                    row[0] || '',
+                    row[1] || '',
+                    row[2] || '',
+                    row[3] || '',
+                    row[4] || '',
+                    row[5] || '',
+                    row[6] || ''
+                ];
+                
+                return `
+                    <tr>
+                        <td><strong>${id}</strong></td>
+                        <td>${name}</td>
+                        <td>${gender}</td>
+                        <td>${address}</td>
+                        <td>${birhtday}</td>
+                        <td>${startwork}</td>
+                        <td>${endwork}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            tableBody.innerHTML = rows;
+        }
+        
+        // function refreshData() {
+        //     employeeData = [];
+        //     displayData();
+        //     loadData();
+        // }
+        
+        // Tự động tải dữ liệu khi trang được load (nếu đã cấu hình API key)
+        window.addEventListener('load', () => {
+            if (API_KEY !== 'AIzaSyDxaT4hU_6cIlfhbP2U4EZ1nEJiz7CLBrc') {
+                loadData();
+            }
+        });
+    </script>
+</body>
+</html>
